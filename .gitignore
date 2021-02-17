@@ -1,0 +1,5 @@
+.vscode
+build
+.clang-format
+log.txt
+main.lds
