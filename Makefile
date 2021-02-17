@@ -31,7 +31,7 @@ bootdisk:
 
 # Run qemu to simulate booting of our code
 qemu: all
-	qemu-system-i386 $(QEMUFLAGS) -drive format=raw,file=$(DISK_IMG)
+	qemu-system-i386 $(QEMUFLAGS) -drive format=raw,file=$(DISK_IMG) -daemonize
 
 debug_boot: 
 	make -C boot debug
