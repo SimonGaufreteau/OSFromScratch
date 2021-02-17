@@ -1,16 +1,28 @@
-ENTRY(main);
-
-PHDRS
-{
-  headers PT_PHDR PHDRS;
-  code PT_LOAD FILEHDR PHDRS;
-}
-
+OUTPUT_FORMAT(elf32-i386)
+ENTRY(start)
 SECTIONS
 {
-  
-  .text 0x1000: { *(.text)  } :code
-  .data :  { *(.data)  }
-  .bss :  { *(.bss) }
-  /DISCARD/ : { *(.eh_frame) }
+    . = 0x01000; /*0x001000*/
+    .text BLOCK(4K) : ALIGN(4K)
+    {
+        *(.text)
+    }
+
+    /*Read-only data*/
+    .rodata BLOCK(4K) : ALIGN(4K)
+    {
+        *(.rodata)
+    }
+
+    /*Read-write data (initialized)*/
+    .data BLOCK(4K) : ALIGN(4K)
+    {
+        *(.data)
+    }
+
+    /*Read-write data (uninitialized) and stack*/
+    .bss BLOCK(4K) : ALIGN(4K)
+    {
+        *(.bss)
+    }
 }

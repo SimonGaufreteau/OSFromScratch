@@ -18,7 +18,7 @@ $(BUILD_DIR)/%.o: %.c
 	gcc $(CFLAGS) -o $@ -c $< 
 
 $(BUILD_DIR)/asm/%.o: %.asm
-	nasm -f elf $< -o $@
+	nasm -f elf $< -F dwarf -g -o $@
 
 .SILENT:clean
 

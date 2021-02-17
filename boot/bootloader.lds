@@ -1,16 +1,28 @@
-OUTPUT(bootloader);
-
-PHDRS
-{
-  headers PT_NULL;
-  text PT_LOAD FILEHDR PHDRS ;
-  data PT_LOAD ;
-}
-
-
+OUTPUT_FORMAT(elf32-i386)
+ENTRY(start_boot)
 SECTIONS
 {
-  . = SIZEOF_HEADERS;
-  .text 0x7c00:  {  *(.text)  } :text
-  .data :  {  *(.data)  } :data
+    . = 0x7c00; 
+    .text BLOCK(4K) : ALIGN(4K)
+    {
+        *(.text)
+    }
+
+    /*Read-only data*/
+    .rodata BLOCK(4K) : ALIGN(4K)
+    {
+        *(.rodata)
+    }
+
+    /*Read-write data (initialized)*/
+    .data BLOCK(4K) : ALIGN(4K)
+    {
+        *(.data)
+    }
+
+    /*Read-write data (uninitialized) and stack*/
+    .bss BLOCK(4K) : ALIGN(4K)
+    {
+        *(.bss)
+    }
 }

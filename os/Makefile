@@ -17,13 +17,19 @@ drivers:
 kernel:
 	make -C kernel
 
+debug_kernel: 
+	make -C kernel debug
+debug_drivers:	
+	make -C drivers debug
 debug: LDFLAGS += -g
-debug: all
+debug: debug_kernel debug_drivers $(OS)
 
 $(OS): OS_OBJS += $(wildcard $(KERNEL_BUILD_DIR)/*.o)
 $(OS): OS_OBJS += $(wildcard $(DRIVERS_BUILD_DIR)/*.o)
 $(OS):
-	ld $(LDFLAGS) -o $@ -Ttext 0x1000 $(KERNEL_BUILD_DIR)/asm/kernel_entry.o $(OS_OBJS) --oformat binary
+	#ld $(LDFLAGS) -o $@ -Ttext 0x1000 $(KERNEL_BUILD_DIR)/asm/kernel_entry.o $(OS_OBJS) --oformat binary
+	ld $(LDFLAGS) -nmagic -Tos.lds $(KERNEL_BUILD_DIR)/asm/kernel_entry.o $(OS_OBJS) -o $(BUILD_DIR)/os-image.elf
+	objcopy -O binary $(BUILD_DIR)/os-image.elf $(OS)
 
 
 
