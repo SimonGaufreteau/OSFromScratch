@@ -1,5 +1,6 @@
 #include "screen.h"
 #include "../kernel/low_level.h"
+#include "../utils/memcopy.h"
 
 int get_screen_offset(int row, int column) {
     return (row * MAX_COLS + column) * 2;
@@ -27,62 +28,74 @@ void set_cursor(int offset) {
     offset /= 2; // Convert from cell offset to char offset .
     // This is similar to get_cursor , only now we write
     // bytes to those internal device registers .
-    // TODO
     port_byte_out(REG_SCREEN_CTRL, 14);
     port_byte_out(REG_SCREEN_DATA, offset >> 8);
     port_byte_out(REG_SCREEN_CTRL, 15);
-    port_byte_out(REG_SCREEN_DATA, offset);
+    port_byte_out(REG_SCREEN_DATA, offset & 0xff);
 }
 
-/* Print a char on the screen at col , row , or at cursor position */
-void print_char(char character, int col, int row, char attribute_byte) {
-    /* Create a byte ( char ) pointer to the start of video memory */
+int handle_scrolling(int offset) {
+    int i;
+    /*shift the content by 1 line up*/
+    for (i = 1; i < MAX_ROWS; i++) {
+        memcopy(get_screen_offset(i, 0) + VIDEO_ADDRESS,
+                get_screen_offset(i - 1, 0) + VIDEO_ADDRESS, MAX_COLS * 2);
+    }
+
     unsigned char *vidmem = (unsigned char *)VIDEO_ADDRESS;
-    /* If attribute byte is zero , assume the default style . */
+    int current_offset = get_screen_offset(MAX_ROWS - 1, 0);
+    /*create one blank line at the end*/
+    for (i = 0; i < MAX_COLS; i++) {
+        vidmem[current_offset] = ' ';
+        vidmem[current_offset + 1] = WHITE_ON_BLACK;
+        current_offset += 2;
+    }
+    offset = get_screen_offset(MAX_ROWS - 1, 0);
+    return offset;
+}
+/* Print a char on the screen at col , row , or at cursor position */
+void print_char(char character, int row, int col, char attribute_byte) {
+    unsigned char *vidmem = (unsigned char *)VIDEO_ADDRESS;
     if (!attribute_byte) {
         attribute_byte = WHITE_ON_BLACK;
     }
-    /* Get the video memory offset for the screen location */
+
     int offset;
-    /* If col and row are non - negative , use them for offset . */
     if (col >= 0 && row >= 0) {
-        offset = get_screen_offset(col, row);
-        /* Otherwise , use the current cursor position . */
+        offset = get_screen_offset(row, col);
     } else {
         offset = get_cursor();
     }
-    // If we see a newline character , set offset to the end of
-    // current row , so it will be advanced to the first col
-    // of the next row.
+
     if (character == '\n') {
         int rows = offset / (2 * MAX_COLS);
-        offset = get_screen_offset(79, rows);
-        // Otherwise , write the character and its attribute byte to
-        // video memory at our calculated offset .
+        offset = get_screen_offset(rows + 1, col);
     } else {
+        // Set the char in the video memory
         vidmem[offset] = character;
         vidmem[offset + 1] = attribute_byte;
     }
-    // Update the offset to the next character cell , which is
-    // two bytes ahead of the current cell .
+
+    // Move to the next cell
     offset += 2;
+
     // Make scrolling adjustment , for when we reach the bottom
     // of the screen .
-    // TODO
-    // offset = handle_scrolling(offset);
+    if (offset >= get_screen_offset(MAX_ROWS, 0))
+        offset = handle_scrolling(offset);
     // Update the cursor position on the screen device .
     set_cursor(offset);
 }
 
-void print_at(char *message, int col, int row) {
+void print_at(char *message, int row, int col) {
     // Update the cursor if col and row not negative .
     if (col >= 0 && row >= 0) {
-        set_cursor(get_screen_offset(col, row));
+        set_cursor(get_screen_offset(row, col));
     }
     // Loop through each char of the message and print it.
     int i = 0;
     while (message[i] != 0) {
-        print_char(message[i++], col, row, WHITE_ON_BLACK);
+        print_char(message[i++], row, col, WHITE_ON_BLACK);
     }
 }
 
@@ -94,7 +107,7 @@ void clear_screen() {
     /* Loop through video memory and write blank characters . */
     for (row = 0; row < MAX_ROWS; row++) {
         for (col = 0; col < MAX_COLS; col++) {
-            print_char(' ', col, row, WHITE_ON_BLACK);
+            print_char(' ', row, col, WHITE_ON_BLACK);
         }
     }
     // Move the cursor back to the top left .
